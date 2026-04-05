@@ -1,0 +1,39 @@
+services:
+  traefik:
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=your-email@your-domain.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./acme.json:/acme.json
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=your-network"
+      - "traefik.http.services.traefik-dashboard.loadbalancer.server.port=8080"
+      - "traefik.http.routers.dashboard.rule=Host(`monitor.your-domain.com`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.middlewares=auth-admin"
+      - "traefik.http.middlewares.auth-admin.basicauth.users=your-username:your-hashed-password"
+
+      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.security-headers.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.security-headers.headers.frameDeny=true"
+
+      - "traefik.http.middlewares.limit-requests.ratelimit.average=100"
+      - "traefik.http.middlewares.limit-requests.ratelimit.burst=50"
+
+      - "traefik.http.routers.dashboard.middlewares=auth-admin,security-headers,limit-requests"
